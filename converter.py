@@ -240,3 +240,58 @@ class FloorPlanConverter:
             'scale': scale,
             'wall_height': wall_h
         }
+    
+    def create_preview(self, walls, rgb):
+        preview = rgb.copy()
+        if len(preview.shape) == 2:
+            preview = cv2.cvtColor(preview, cv2.COLOR_GRAY2RGB)
+        preview[walls > 0] = [255, 0, 0]  # Red walls
+        return cv2.cvtColor(preview, cv2.COLOR_RGB2BGR)
+    
+    def convert(self, image):
+        # Preprocess
+        binary, gray, rgb = self.preprocess(image)
+        
+        # Detect walls
+        walls, skeleton = self.detect_main_walls(binary)
+        
+        # Build 3D model
+        model = self.build_3d_model(walls, binary.shape)
+        
+        # Create preview
+        preview = self.create_preview(walls, rgb)
+        
+        return {
+            'model': model,
+            'preview': preview,
+            'walls': walls,
+            'skeleton': skeleton,
+            'binary': binary
+        }
+    
+    def export_obj(self, model, filename):
+        v, f = model['vertices'], model['faces']
+        
+        with open(filename, 'w') as file:
+            file.write("# 3D Floor Plan Model\n")
+            file.write(f"# Generated with {len(v)} vertices and {len(f)} faces\n\n")
+            
+            for vertex in v:
+                file.write(f"v {vertex[0]:.6f} {vertex[1]:.6f} {vertex[2]:.6f}\n")
+            
+            file.write("\n")
+            
+            for face in f:
+                file.write(f"f {face[0]+1} {face[1]+1} {face[2]+1}\n")
+    
+    def export_metadata(self, model, filename):
+        metadata = {
+            'vertices_count': len(model['vertices']),
+            'faces_count': len(model['faces']),
+            'scale': model['scale'],
+            'wall_height': model['wall_height'],
+            'config': self.config
+        }
+        
+        with open(filename, 'w') as f:
+            json.dump(metadata, f, indent=2)
