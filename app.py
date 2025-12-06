@@ -72,7 +72,6 @@ cleanup_thread.start()
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
@@ -245,7 +244,6 @@ def convert_to_3d(job_id):
 
 @app.route('/api/status/<job_id>', methods=['GET'])
 def get_job_status(job_id):
-    """Get the status of a conversion job"""
     if job_id not in conversion_jobs:
         return jsonify({'error': 'Job not found'}), 404
     
@@ -272,7 +270,6 @@ def get_job_status(job_id):
 
 @app.route('/api/download/<job_id>/<file_type>', methods=['GET'])
 def download_file(job_id, file_type):
-    """Download generated files"""
     if job_id not in conversion_jobs:
         return jsonify({'error': 'Job not found'}), 404
     
@@ -309,7 +306,6 @@ def download_file(job_id, file_type):
 
 @app.route('/api/jobs', methods=['GET'])
 def list_jobs():
-    """List all jobs (for debugging/admin)"""
     jobs_list = []
     for job_id, job in conversion_jobs.items():
         jobs_list.append({
@@ -326,7 +322,6 @@ def list_jobs():
 
 @app.route('/api/delete/<job_id>', methods=['DELETE'])
 def delete_job(job_id):
-    """Delete a job and its associated files"""
     if job_id not in conversion_jobs:
         return jsonify({'error': 'Job not found'}), 404
     
@@ -359,7 +354,6 @@ def delete_job(job_id):
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
-    """Handle file too large error"""
     return jsonify({
         'error': 'File too large',
         'max_size': f'{MAX_FILE_SIZE / (1024*1024)}MB'
@@ -367,12 +361,10 @@ def request_entity_too_large(error):
 
 @app.errorhandler(404)
 def not_found(error):
-    """Handle 404 errors"""
     return jsonify({'error': 'Endpoint not found'}), 404
 
 @app.errorhandler(500)
 def internal_error(error):
-    """Handle 500 errors"""
     return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
