@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  floorplan-converter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: floorplan-3d-backend
+    ports:
+      - "8011:8011"
+    volumes:
+      # Persist uploads and outputs
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8011/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
