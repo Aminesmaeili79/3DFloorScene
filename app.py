@@ -1,10 +1,3 @@
-"""
-============================================================================
-FLASK BACKEND - 2D TO 3D FLOOR PLAN CONVERTER API
-============================================================================
-REST API for converting 2D floor plan images to 3D models
-"""
-
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
