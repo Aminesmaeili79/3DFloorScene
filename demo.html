@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Floor Plan to 3D - Enhanced Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .badge {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.5em;
+            font-weight: normal;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s;
+        }
+
+        .upload-section:hover {
+            border-color: #764ba2;
+            background: #f0f1ff;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .convert-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 50px;
+            border-radius: 50px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .convert-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .convert-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .viewer-container {
+            display: none;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .viewer-container.active {
+            display: block;
+        }
+
+        #viewer3d {
+            width: 100%;
+            height: 700px;
+            position: relative;
+        }
+
+        .controls-overlay {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0,0,0,0.75);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 300px;
+            z-index: 100;
+        }
+
+        .controls-overlay h3 {
+            margin: 0 0 15px 0;
+            color: #4CAF50;
+            font-size: 1.2em;
+        }
+
+        .controls-overlay p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        .lighting-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(0,0,0,0.75);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            min-width: 200px;
+            z-index: 100;
+        }
+
+        .lighting-controls h3 {
+            margin: 0 0 15px 0;
+            color: #FFD93D;
+            font-size: 1.2em;
+        }
+
+        .lighting-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .lighting-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .lighting-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .lighting-btn.active {
+            background: #FFD93D;
+            border-color: #FFD93D;
+            color: #333;
+        }
+
+        .control-buttons {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .control-btn {
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .control-btn:hover {
+            background: rgba(118, 75, 162, 0.9);
+            transform: translateY(-2px);
+        }
+
+        .control-btn.active {
+            background: #4CAF50;
+        }
+
+        .download-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .download-btn {
+            flex: 1;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .download-btn.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .download-btn.secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .filename-display {
+            margin-top: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                🏠 Floor Plan to 3D
+                <span class="badge">✨ With Room Detection</span>
+            </h1>
+        </div>
+
+        <div class="content">
+            <!-- Upload Section -->
+            <div class="upload-section" id="uploadSection">
+                <h2 style="color: #667eea; margin-bottom: 20px;">📤 Upload Floor Plan</h2>
+                <p style="color: #666; margin-bottom: 20px;">
+                    Upload your 2D floor plan and get a 3D model with automatic room detection!
+                </p>
+                <div class="file-input-wrapper">
+                    <input type="file" id="fileInput" accept="image/*">
+                    <label for="fileInput" class="file-input-label">Choose File</label>
+                </div>
+                <div id="filenameDisplay" class="filename-display" style="display: none;"></div>
+            </div>
+
+            <!-- Convert Button -->
+            <button class="convert-btn" id="convertBtn" disabled>
+                🚀 Convert to 3D Model with Room Detection
+            </button>
+
+            <!-- Loading -->
+            <div id="loadingSection" style="display: none;" class="loading">
+                <div class="spinner"></div>
+                <h3>Converting your floor plan...</h3>
+                <p>Detecting walls and rooms with AI...</p>
+            </div>
+
+            <!-- 3D Viewer -->
+            <div class="viewer-container" id="viewerContainer">
+                <div id="viewer3d"></div>
+                
+                <div class="controls-overlay">
+                    <h3>🎮 Controls</h3>
+                    <p>🖱️ <strong>Left Drag:</strong> Rotate</p>
+                    <p>🖱️ <strong>Right Drag:</strong> Pan</p>
+                    <p>🔄 <strong>Scroll:</strong> Zoom</p>
+                    <p>⌨️ <strong>Space:</strong> Reset View</p>
+                </div>
+
+                <div class="lighting-controls">
+                    <h3>💡 Lighting</h3>
+                    <div class="lighting-buttons">
+                        <button class="lighting-btn active" data-mode="day">☀️ Day</button>
+                        <button class="lighting-btn" data-mode="night">🌙 Night</button>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 14px;">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="lightsToggle" checked>
+                            <span>Room Lights (<span id="lightCount">0</span>)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="control-buttons">
+                    <button class="control-btn" id="wireframeBtn">📐 Wireframe</button>
+                    <button class="control-btn" id="isoViewBtn">📦 Isometric</button>
+                    <button class="control-btn" id="resetBtn">🔄 Reset</button>
+                </div>
+            </div>
+
+            <!-- Download Buttons -->
+            <div id="downloadSection" style="display: none;">
+                <div class="download-buttons">
+                    <button class="download-btn primary" id="downloadObjBtn">
+                        📥 Download 3D Model (.obj)
+                    </button>
+                    <button class="download-btn secondary" id="downloadPreviewBtn">
+                        🖼️ Download Preview
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        let currentJobId = null;
+        let scene, camera, renderer, mesh, controls;
+        let isWireframe = false;
+        let roomLights = [];
+        let lightsEnabled = true;
+        let ambientLight, mainLight, fillLight1, fillLight2;
+
+        // File handling
+        const fileInput = document.getElementById('fileInput');
+        const convertBtn = document.getElementById('convertBtn');
+        const filenameDisplay = document.getElementById('filenameDisplay');
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                filenameDisplay.textContent = `📄 ${file.name}`;
+                filenameDisplay.style.display = 'block';
+                convertBtn.disabled = false;
+            }
+        });
+
+        // Convert button
+        convertBtn.addEventListener('click', async () => {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            convertBtn.disabled = true;
+            document.getElementById('loadingSection').style.display = 'block';
+            document.getElementById('viewerContainer').classList.remove('active');
+            document.getElementById('downloadSection').style.display = 'none';
+
+            try {
+                // Upload
+                const formData = new FormData();
+                formData.append('file', file);
+                const uploadRes = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const { job_id } = await uploadRes.json();
+                currentJobId = job_id;
+
+                // Convert
+                const convertRes = await fetch(`${API_BASE}/convert/${job_id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wall_height: 2.7, scale: 0.01 })
+                });
+                const result = await convertRes.json();
+
+                // Hide loading
+                document.getElementById('loadingSection').style.display = 'none';
+
+                // Show results
+                displayResults(result);
+
+                // Load 3D model
+                await load3DModel(job_id);
+
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+                console.error(error);
+            } finally {
+                convertBtn.disabled = false;
+                document.getElementById('loadingSection').style.display = 'none';
+            }
+        });
+
+        function displayResults(result) {
+            // Show sections
+            document.getElementById('viewerContainer').classList.add('active');
+            document.getElementById('downloadSection').style.display = 'block';
+
+            // Download buttons
+            document.getElementById('downloadObjBtn').onclick = () => {
+                window.open(`${API_BASE}/download/${currentJobId}/obj`, '_blank');
+            };
+            document.getElementById('downloadPreviewBtn').onclick = () => {
+                window.open(`${API_BASE}/download/${currentJobId}/preview`, '_blank');
+            };
+        }
+
+        function rgbToHex(rgb) {
+            const r = Math.round(rgb[0] * 255);
+            const g = Math.round(rgb[1] * 255);
+            const b = Math.round(rgb[2] * 255);
+            return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        }
+
+        async function load3DModel(jobId) {
+            const container = document.getElementById('viewer3d');
+            
+            // Clear previous scene
+            if (renderer) {
+                container.removeChild(renderer.domElement);
+            }
+
+            // Fetch metadata first to get lights data
+            const metaResponse = await fetch(`${API_BASE}/download/${jobId}/json`);
+            const metadata = await metaResponse.json();
+            const lightsData = metadata.lights || [];
+
+            // Setup scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f0f5);
+
+            camera = new THREE.PerspectiveCamera(
+                50,
+                container.clientWidth / container.clientHeight,
+                0.1,
+                1000
+            );
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Fetch OBJ data
+            const response = await fetch(`${API_BASE}/download/${jobId}/obj`);
+            const objText = await response.text();
+
+            // Parse OBJ manually (simple parser)
+            const geometry = parseOBJ(objText);
+            
+            // Center the geometry
+            geometry.computeBoundingBox();
+            const center = new THREE.Vector3();
+            geometry.boundingBox.getCenter(center);
+            geometry.translate(-center.x, -center.y, -center.z);
+            
+            // Calculate optimal camera distance
+            const boundingBox = geometry.boundingBox;
+            const size = new THREE.Vector3();
+            boundingBox.getSize(size);
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            const cameraDistance = Math.abs(maxDim / Math.sin(fov / 2)) * 1.2;
+
+            // Create mesh with vertex colors (default material)
+            const material = new THREE.MeshPhongMaterial({
+                vertexColors: true,
+                side: THREE.DoubleSide,
+                flatShading: false,
+                shininess: 40,
+                specular: 0x222222
+            });
+
+            mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+
+            // Position camera at optimal distance
+            camera.position.set(cameraDistance * 0.7, cameraDistance * 0.7, cameraDistance * 0.7);
+            camera.lookAt(0, 0, 0);
+
+            // Better lighting setup
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            mainLight.position.set(cameraDistance, cameraDistance * 1.5, cameraDistance);
+            mainLight.castShadow = true;
+            mainLight.shadow.mapSize.width = 2048;
+            mainLight.shadow.mapSize.height = 2048;
+            scene.add(mainLight);
+
+            fillLight1 = new THREE.DirectionalLight(0xffffff, 0.3);
+            fillLight1.position.set(-cameraDistance, cameraDistance * 0.5, -cameraDistance);
+            scene.add(fillLight1);
+
+            fillLight2 = new THREE.DirectionalLight(0xffffff, 0.2);
+            fillLight2.position.set(0, -cameraDistance * 0.5, cameraDistance);
+            scene.add(fillLight2);
+
+            // Add room lights
+            addRoomLights(lightsData);
+
+            // Update light count display
+            document.getElementById('lightCount').textContent = lightsData.length;
+
+            // Mouse controls
+            setupControls(container, cameraDistance);
+
+            // Control buttons
+            setupControlButtons(cameraDistance);
+
+            // Lighting controls
+            setupLightingControls();
+
+            // Animation loop
+            animate();
+        }
+
+        function addRoomLights(lightsData) {
+            // Clear existing room lights
+            roomLights.forEach(light => scene.remove(light));
+            roomLights = [];
+
+            if (!lightsEnabled) return;
+
+            lightsData.forEach(lightData => {
+                const light = new THREE.PointLight(
+                    new THREE.Color(lightData.color[0], lightData.color[1], lightData.color[2]),
+                    lightData.intensity * 2,
+                    10,
+                    2
+                );
+                
+                light.position.set(
+                    lightData.position[0],
+                    lightData.position[1],
+                    lightData.position[2]
+                );
+                
+                light.castShadow = true;
+                light.shadow.mapSize.width = 512;
+                light.shadow.mapSize.height = 512;
+                
+                scene.add(light);
+                roomLights.push(light);
+
+                // Add small sphere to visualize light position
+                const sphereGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+                const sphereMaterial = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color(lightData.color[0], lightData.color[1], lightData.color[2])
+                });
+                const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                sphere.position.copy(light.position);
+                scene.add(sphere);
+                roomLights.push(sphere);
+            });
+        }
+
+        function setupLightingControls() {
+            // Lighting mode buttons
+            document.querySelectorAll('.lighting-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.lighting-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    const mode = btn.dataset.mode;
+                    setLightingMode(mode);
+                });
+            });
+
+            // Lights toggle
+            document.getElementById('lightsToggle').addEventListener('change', (e) => {
+                lightsEnabled = e.target.checked;
+                roomLights.forEach(light => {
+                    light.visible = lightsEnabled;
+                });
+            });
+        }
+
+        function setLightingMode(mode) {
+            switch(mode) {
+                case 'day':
+                    ambientLight.intensity = 0.7;
+                    mainLight.intensity = 0.8;
+                    fillLight1.intensity = 0.3;
+                    fillLight2.intensity = 0.2;
+                    roomLights.forEach(light => {
+                        if (light.isPointLight) light.intensity *= 0.3;
+                    });
+                    scene.background = new THREE.Color(0xf0f0f5);
+                    break;
+                
+                case 'night':
+                    ambientLight.intensity = 0.2;
+                    mainLight.intensity = 1.2;
+                    fillLight1.intensity = 0.1;
+                    fillLight2.intensity = 0.1;
+                    roomLights.forEach(light => {
+                        if (light.isPointLight) light.intensity *= 1.5;
+                    });
+                    scene.background = new THREE.Color(0x2a2a3e);
+                    break;
+            }
+        }
+
+        function parseOBJ(objText) {
+            const lines = objText.split('\n');
+            const vertices = [];
+            const faces = [];
+
+            for (const line of lines) {
+                const parts = line.trim().split(/\s+/);
+                
+                if (parts[0] === 'v') {
+                    vertices.push(
+                        parseFloat(parts[1]),
+                        parseFloat(parts[2]),
+                        parseFloat(parts[3])
+                    );
+                } else if (parts[0] === 'f') {
+                    const idx1 = parseInt(parts[1]) - 1;
+                    const idx2 = parseInt(parts[2]) - 1;
+                    const idx3 = parseInt(parts[3]) - 1;
+                    faces.push(idx1, idx2, idx3);
+                }
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setIndex(faces);
+            geometry.computeVertexNormals();
+
+            // Add default colors (will be overridden by server colors if available)
+            const colors = new Float32Array(vertices.length);
+            for (let i = 0; i < colors.length; i += 3) {
+                colors[i] = 0.9;
+                colors[i + 1] = 0.9;
+                colors[i + 2] = 0.9;
+            }
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            return geometry;
+        }
+
+        function setupControls(container, cameraDistance) {
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            
+            // Smooth control parameters
+            const rotationSpeed = 0.003;
+            const panSpeed = 0.008;
+            const zoomSpeed = 0.001;
+            const dampingFactor = 0.08;
+            const momentumDecay = 0.92;
+            
+            // Target values for smooth interpolation
+            let targetRotationX = 0;
+            let targetRotationY = 0;
+            let targetZoom = camera.position.length();
+            let targetPanX = 0;
+            let targetPanY = 0;
+            
+            // Momentum values
+            let velocityX = 0;
+            let velocityY = 0;
+            let zoomVelocity = 0;
+            
+            // Spherical coordinates for smoother rotation
+            let spherical = {
+                radius: camera.position.length(),
+                phi: Math.acos(camera.position.y / camera.position.length()),
+                theta: Math.atan2(camera.position.x, camera.position.z)
+            };
+            let targetSpherical = { ...spherical };
+            
+            // Pan offset
+            let panOffset = new THREE.Vector3(0, 0, 0);
+            let targetPanOffset = new THREE.Vector3(0, 0, 0);
+
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                velocityX = 0;
+                velocityY = 0;
+            });
+            
+            container.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+            
+            container.addEventListener('mouseleave', () => {
+                isDragging = false;
+            });
+
+            container.addEventListener('mousemove', (e) => {
+                const deltaX = e.offsetX - previousMousePosition.x;
+                const deltaY = e.offsetY - previousMousePosition.y;
+                
+                if (isDragging) {
+                    if (e.buttons === 1) {
+                        // Rotate around center with momentum
+                        velocityX = deltaX * rotationSpeed;
+                        velocityY = deltaY * rotationSpeed;
+                        
+                        targetSpherical.theta -= velocityX;
+                        targetSpherical.phi += velocityY;
+                        
+                        // Clamp phi to prevent flipping
+                        targetSpherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, targetSpherical.phi));
+                        
+                    } else if (e.buttons === 2) {
+                        // Smooth panning
+                        const panX = -deltaX * panSpeed;
+                        const panY = deltaY * panSpeed;
+                        
+                        // Calculate pan in camera space
+                        const cameraRight = new THREE.Vector3();
+                        const cameraUp = new THREE.Vector3();
+                        camera.matrix.extractBasis(cameraRight, cameraUp, new THREE.Vector3());
+                        
+                        targetPanOffset.add(cameraRight.multiplyScalar(panX));
+                        targetPanOffset.add(cameraUp.multiplyScalar(panY));
+                    }
+                }
+                previousMousePosition = { x: e.offsetX, y: e.offsetY };
+            });
+
+            container.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                
+                // Smooth zoom with velocity
+                const delta = e.deltaY * zoomSpeed;
+                zoomVelocity += delta * targetSpherical.radius;
+                
+            }, { passive: false });
+
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    // Smooth reset
+                    targetSpherical.radius = cameraDistance * 0.99;
+                    targetSpherical.phi = Math.PI / 4;
+                    targetSpherical.theta = Math.PI / 4;
+                    targetPanOffset.set(0, 0, 0);
+                    velocityX = 0;
+                    velocityY = 0;
+                    zoomVelocity = 0;
+                    
+                    if (isWireframe) {
+                        isWireframe = false;
+                        mesh.material.wireframe = false;
+                        document.getElementById('wireframeBtn').classList.remove('active');
+                    }
+                }
+            });
+            
+            // Smooth update loop
+            function updateControls() {
+                // Apply momentum when not dragging
+                if (!isDragging) {
+                    targetSpherical.theta -= velocityX;
+                    targetSpherical.phi += velocityY;
+                    targetSpherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, targetSpherical.phi));
+                    
+                    // Decay momentum
+                    velocityX *= momentumDecay;
+                    velocityY *= momentumDecay;
+                    
+                    // Stop when velocity is negligible
+                    if (Math.abs(velocityX) < 0.0001) velocityX = 0;
+                    if (Math.abs(velocityY) < 0.0001) velocityY = 0;
+                }
+                
+                // Apply zoom velocity
+                targetSpherical.radius += zoomVelocity;
+                targetSpherical.radius = Math.max(cameraDistance * 0.2, Math.min(cameraDistance * 4, targetSpherical.radius));
+                zoomVelocity *= 0.85; // Smooth zoom decay
+                
+                // Smooth interpolation (lerp) toward target values
+                spherical.radius += (targetSpherical.radius - spherical.radius) * dampingFactor;
+                spherical.phi += (targetSpherical.phi - spherical.phi) * dampingFactor;
+                spherical.theta += (targetSpherical.theta - spherical.theta) * dampingFactor;
+                
+                // Smooth pan interpolation
+                panOffset.lerp(targetPanOffset, dampingFactor);
+                
+                // Convert spherical to Cartesian coordinates
+                camera.position.x = spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+                camera.position.y = spherical.radius * Math.cos(spherical.phi);
+                camera.position.z = spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+                
+                // Apply pan offset
+                camera.position.add(panOffset);
+                
+                // Look at center plus pan offset
+                camera.lookAt(panOffset);
+                
+                requestAnimationFrame(updateControls);
+            }
+            
+            updateControls();
+        }
+
+        function setupControlButtons(cameraDistance) {
+            document.getElementById('wireframeBtn').addEventListener('click', () => {
+                isWireframe = !isWireframe;
+                mesh.material.wireframe = isWireframe;
+                document.getElementById('wireframeBtn').classList.toggle('active');
+            });
+
+            document.getElementById('isoViewBtn').addEventListener('click', () => {
+                camera.position.set(cameraDistance * 0.7, cameraDistance * 0.7, cameraDistance * 0.7);
+                camera.lookAt(0, 0, 0);
+            });
+
+            document.getElementById('resetBtn').addEventListener('click', () => resetView(cameraDistance));
+        }
+
+        function resetView(cameraDistance) {
+            camera.position.set(cameraDistance * 0.7, cameraDistance * 0.7, cameraDistance * 0.7);
+            camera.lookAt(0, 0, 0);
+            if (isWireframe) {
+                isWireframe = false;
+                mesh.material.wireframe = false;
+                document.getElementById('wireframeBtn').classList.remove('active');
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            camera.lookAt(0, 0, 0);
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (camera && renderer) {
+                const container = document.getElementById('viewer3d');
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            }
+        });
+    </script>
+</body>
+</html>

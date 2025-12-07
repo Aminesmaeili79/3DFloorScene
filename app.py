@@ -1,3 +1,10 @@
+"""
+============================================================================
+FLASK BACKEND - 2D TO 3D FLOOR PLAN CONVERTER API
+============================================================================
+REST API for converting 2D floor plan images to 3D models
+"""
+
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -34,9 +41,11 @@ OUTPUT_FOLDER.mkdir(exist_ok=True)
 conversion_jobs = {}
 
 def allowed_file(filename):
+    """Check if file extension is allowed"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def cleanup_old_files():
+    """Background task to cleanup old files"""
     while True:
         try:
             current_time = time.time()
@@ -72,6 +81,7 @@ cleanup_thread.start()
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
+    """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
@@ -80,6 +90,10 @@ def health_check():
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
+    """
+    Upload a floor plan image
+    Returns: job_id for tracking conversion
+    """
     try:
         # Check if file is present
         if 'file' not in request.files:
@@ -128,6 +142,10 @@ def upload_file():
 
 @app.route('/api/convert/<job_id>', methods=['POST'])
 def convert_to_3d(job_id):
+    """
+    Convert uploaded floor plan to 3D model
+    Accepts configuration parameters in request body
+    """
     try:
         # Check if job exists
         if job_id not in conversion_jobs:
@@ -208,6 +226,29 @@ def convert_to_3d(job_id):
         # Save preview image
         cv2.imwrite(str(preview_path), result['preview'])
         
+        # Prepare room data for JSON (convert numpy arrays to lists)
+        rooms_data = []
+        if 'rooms' in result and result['rooms']:
+            for room in result['rooms']:
+                rooms_data.append({
+                    'id': room['id'],
+                    'type': room['type'],
+                    'area_m2': room['area_m2'],
+                    'width_m': room['width_m'],
+                    'height_m': room['height_m'],
+                    'color': room['color']
+                })
+        
+        # Prepare openings data
+        openings_data = {
+            'doors': len(result.get('openings', {}).get('doors', [])),
+            'windows': len(result.get('openings', {}).get('windows', [])),
+            'total': result.get('openings', {}).get('total_openings', 0)
+        }
+        
+        # Prepare lights data
+        lights_data = result.get('lights', [])
+        
         # Update job with results
         job['status'] = 'completed'
         job['completed_at'] = datetime.now().isoformat()
@@ -217,12 +258,18 @@ def convert_to_3d(job_id):
             'preview': str(preview_path)
         }
         job['stats'] = metadata['stats']
+        job['rooms'] = rooms_data
+        job['openings'] = openings_data
+        job['lights'] = lights_data
         
         return jsonify({
             'success': True,
             'job_id': job_id,
             'status': 'completed',
             'stats': metadata['stats'],
+            'rooms': rooms_data,
+            'openings': openings_data,
+            'lights': lights_data,
             'files': {
                 'obj': f"/api/download/{job_id}/obj",
                 'metadata': f"/api/download/{job_id}/json",
@@ -244,6 +291,7 @@ def convert_to_3d(job_id):
 
 @app.route('/api/status/<job_id>', methods=['GET'])
 def get_job_status(job_id):
+    """Get the status of a conversion job"""
     if job_id not in conversion_jobs:
         return jsonify({'error': 'Job not found'}), 404
     
@@ -258,6 +306,7 @@ def get_job_status(job_id):
     
     if job['status'] == 'completed':
         response['stats'] = job.get('stats')
+        response['rooms'] = job.get('rooms', [])
         response['files'] = {
             'obj': f"/api/download/{job_id}/obj",
             'metadata': f"/api/download/{job_id}/json",
@@ -270,6 +319,7 @@ def get_job_status(job_id):
 
 @app.route('/api/download/<job_id>/<file_type>', methods=['GET'])
 def download_file(job_id, file_type):
+    """Download generated files"""
     if job_id not in conversion_jobs:
         return jsonify({'error': 'Job not found'}), 404
     
@@ -306,6 +356,7 @@ def download_file(job_id, file_type):
 
 @app.route('/api/jobs', methods=['GET'])
 def list_jobs():
+    """List all jobs (for debugging/admin)"""
     jobs_list = []
     for job_id, job in conversion_jobs.items():
         jobs_list.append({
@@ -322,6 +373,7 @@ def list_jobs():
 
 @app.route('/api/delete/<job_id>', methods=['DELETE'])
 def delete_job(job_id):
+    """Delete a job and its associated files"""
     if job_id not in conversion_jobs:
         return jsonify({'error': 'Job not found'}), 404
     
@@ -354,6 +406,7 @@ def delete_job(job_id):
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
+    """Handle file too large error"""
     return jsonify({
         'error': 'File too large',
         'max_size': f'{MAX_FILE_SIZE / (1024*1024)}MB'
@@ -361,10 +414,12 @@ def request_entity_too_large(error):
 
 @app.errorhandler(404)
 def not_found(error):
+    """Handle 404 errors"""
     return jsonify({'error': 'Endpoint not found'}), 404
 
 @app.errorhandler(500)
 def internal_error(error):
+    """Handle 500 errors"""
     return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
